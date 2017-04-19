@@ -6,7 +6,7 @@ Get SNES, GBA and NDS files into WiiU VC.
 I have not done extensive testing on this linux port so there is a good chance something doesn't work right, but for now it just works.
 
 # Usage
-./injector /path/to/rom
+`./injector /path/to/rom`
 
 Download yourself a copy of this repository.  
 Edit the "ip.txt" in "bin" to the IP of your WiiU.  
