@@ -6,8 +6,14 @@
  */
 
 #include <stdio.h>
-#include <conio.h>
-#include <windows.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <linux/in.h>
+#include <arpa/inet.h>
+#include <netinet/ip.h>
+#include <string.h>
+#include <stdlib.h>
 
 enum {
 	TYPE_UNK = 0,
@@ -20,21 +26,21 @@ static const int cport = 7331;
 
 void waitforinput();
 int SNESchk(unsigned char *buf);
-void sendall(SOCKET s, unsigned char *data, size_t size);
-void recvall(SOCKET s, unsigned char *data, size_t size);
+void sendall(int s, unsigned char *data, size_t size);
+void recvall(int s, unsigned char *data, size_t size);
 
 void main(int argc, char *argv[])
 {	//windows exec path is so ugly to get
-	char curpath[MAX_PATH]; 
-	GetModuleFileName(NULL, curpath, MAX_PATH);
+/*	char curpath[4096];
+	GetModuleFileName(NULL, curpath, 4096);
 	char *pptr = curpath;
 	while(*pptr) *pptr++;
-	while(*pptr != '\\') *pptr--;
-	*pptr = '\0';
-	char ipfile[512];
-	sprintf(ipfile, "%s\\ip.txt", curpath);
+	while(*pptr != '/') *pptr--;
+  *pptr = '\0';
+*/char ipfile[512];
+	sprintf(ipfile, "./ip.txt");
 	//lets actually do cool stuff 8 lines later
-	puts("WiiU VC ROM Injector by FIX94");
+	puts("WiiU VC ROM Injector by FIX94 ported by Interslice");
 	FILE *f = fopen(ipfile,"r");
 	if(f == NULL)
 	{
@@ -126,19 +132,23 @@ void main(int argc, char *argv[])
 		}
 	}
 	//Windows socket init stuff
-	WSADATA WsaDat;
-	WSAStartup(MAKEWORD(2,2),&WsaDat);
-	SOCKET s=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
-	if(s == INVALID_SOCKET)
-	{
-		puts("Socket error!");
-		goto end;
-	}
-	SOCKADDR_IN saddr;
-	saddr.sin_port=htons(cport);
+	//WSADATA WsaDat;
+	//WSAStartup(MAKEWORD(2,2),&WsaDat);
+	int s;
+
+	struct sockaddr_in saddr;
 	saddr.sin_family=AF_INET;
+	s = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+	if(s < 0)
+	{
+		printf("\n Socket Failure!");
+		return 0;
+	}
+
+	saddr.sin_port=htons(cport);
+
 	saddr.sin_addr.s_addr=inet_addr(caddr);
-	if(connect(s,(SOCKADDR*)(&saddr),sizeof(saddr)) == SOCKET_ERROR)
+	if(connect(s,(struct sockaddr *)(&saddr),sizeof(saddr)) != 0)
 	{
 		printf("Unable to connect to %s:%i\n", caddr, cport);
 		goto end;
@@ -203,19 +213,18 @@ void main(int argc, char *argv[])
 		remain -= sendsize;
 		ptr += sendsize;
 	}
-	shutdown(s,SD_SEND); //sent all we have
+	shutdown(s,1); //sent all we have
 	recv(s, cmd, 1, 0); //lets see how tcpgecko reacted
 	if(cmd[0] == 0xAA) printf("Transfer successful (%02x)!\n", cmd[0]);
 	else printf("Transfer error occured (%02x)!\n", cmd[0]);
 end:
-	closesocket(s);
-	WSACleanup();
+	close(s);
 	free(buf);
 	waitforinput();
 }
 
 //simple socket send helper functions
-void sendall(SOCKET s, unsigned char *data, size_t size)
+void sendall(int s, unsigned char *data, size_t size)
 {
 	size_t remain = size;
 	while(remain > 0)
@@ -226,7 +235,7 @@ void sendall(SOCKET s, unsigned char *data, size_t size)
 	}
 }
 
-void recvall(SOCKET s, unsigned char *data, size_t size)
+void recvall(int s, unsigned char *data, size_t size)
 {
 	size_t remain = size;
 	while(remain > 0)
@@ -240,8 +249,8 @@ void recvall(SOCKET s, unsigned char *data, size_t size)
 //cant get simpler than that
 void waitforinput()
 {
-	puts("Press any key to exit");
-	getch();
+	puts("Exiting...\n");
+	//getch();
 }
 
 //Checksum verification
